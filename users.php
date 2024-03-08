@@ -1,48 +1,40 @@
 <?php
-session_start();
-include_once "php/config.php";
+    session_start();
+    include_once "config.php";
+    $user_id = $_SESSION['unique_id'];
+    if(isset($_FILES['image'])){
+        $img_name = $_FILES['image']['name'];
+        $img_type = $_FILES['image']['type'];
+        $tmp_name = $_FILES['image']['tmp_name'];
+        
+        $img_explode = explode('.',$img_name);
+        $img_ext = end($img_explode);
 
-if (!isset($_SESSION['unique_id'])) {
-    header("location: login.php");
-}
-?>
-<?php include_once "header.php";?>
-<body>
-  <div class="wrapper">
-    <section class="users">
-      <header>
-        <div class="content">
-          <?php 
-            $sql = mysqli_query($conn, "SELECT * FROM users WHERE unique_id = {$_SESSION['unique_id']}");
-            if(mysqli_num_rows($sql) > 0){
-              $row = mysqli_fetch_assoc($sql);
+        $extensions = ["jpeg", "png", "jpg"];
+        if(in_array($img_ext, $extensions) === true){
+            $types = ["image/jpeg", "image/jpg", "image/png"];
+            if(in_array($img_type, $types) === true){
+                $time = time();
+                $new_img_name = $time.$img_name;
+                if(move_uploaded_file($tmp_name,"images/".$new_img_name)){
+                    $update_query = mysqli_query($conn, "UPDATE users SET img = '{$new_img_name}' WHERE unique_id = {$user_id}");
+                    if ($update_query) {
+                        echo "Image updated successfully!";
+                    } else {
+                        echo "Error updating image: " . mysqli_error($conn);
+                    }
+                }
             }
-          ?>
-           <div id="fileInputContainer"></div>
-                    <img src="php/images/<?php if ($row['img']) {
-                       echo $row['img'];
-                        } else {
-                              echo "Default.jpeg";
-                                  } ?>" alt="" id="profileImage"  onclick="display()">
-          <div class="details">
-            <span><?php echo $row['fname']. " " . $row['lname'] ?></span>
-            <p><?php echo $row['status']; ?></p>
-          </div>
-        </div>
-        <a href="php/logout.php?logout_id=<?php echo $row['unique_id']; ?>" class="logout">Logout</a>
-      </header>
-      <div class="search">
-        <span class="text">Select an user to start chat</span>
-        <input type="text" placeholder="Enter name to search...">
-        <button><i class="fas fa-search"></i></button>
-      </div>
-      <div class="users-list">
-      </div>
-    </section>
-  </div>
-  <?php include_once "profile.php"; ?>
-  <script src="javascript/users.js"></script>
-  <script src="javascript/profile.js"></script>
-</script>
-</body>
-</html>
+        }
+    }
+    $outgoing_id = $_SESSION['unique_id'];
+    $sql = "SELECT * FROM users WHERE NOT unique_id = {$outgoing_id} ORDER BY user_id DESC";
+    $query = mysqli_query($conn, $sql);
+    $output = "";
+    if(mysqli_num_rows($query) == 0){
+        $output .= "No users are available to chat";
+    }elseif(mysqli_num_rows($query) > 0){
+        include_once "data.php";
+    }
+    echo $output;
+?>
